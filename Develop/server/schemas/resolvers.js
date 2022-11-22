@@ -1,32 +1,25 @@
 const { AuthenticationError } = require('apollo-server-express');
-const { Profile, Post } = require('../models');
+const { User, Book } = require('../models');
 const { signToken } = require('../utils/auth');
 
 const resolvers = {
   Query: {
-    profiles: async () => {
-      return Profile.find().populate('posts');
+    Users: async () => {
+      return User.find().populate('books');
     },
-    profile: async (parent, { name }) => {
-      return Profile.findOne({ name }).populate('posts');
-    },
-    posts: async (parent, { name }) => {
-      const params = name ? { name } : {};
-      return Post.find(params).sort({ createdAt: -1 });
-    },
-    post: async (parent, { postId }) => {
-      return Post.findOne({ _id: postId });
+    User: async (parent, { username }) => {
+      return User.findOne({ username }).populate('books');
     },
   },
 
   Mutation: {
-    addProfile: async (parent, { name, email, password }) => {
-      const profile = await Profile.create({ name, email, password });
-      const token = signToken(profile);
-      return { token, profile };
+    addUser: async (parent, { username, email, password }) => {
+      const user = await User.create({ username, email, password });
+      const token = signToken(user);
+      return { token, user };
     },
     login: async (parent, { email, password }) => {
-      const profile = await Profile.findOne({ email });
+      const profile = await User.findOne({ email });
 
       if (!profile) {
         throw new AuthenticationError('No user found with this email address');
@@ -42,39 +35,31 @@ const resolvers = {
 
       return { token, profile };
     },
-    addPost: async (parent, { postText, postAuthor }) => {
-      const post = await Post.create({ postText, postAuthor });
-
-      await Profile.findOneAndUpdate(
-        { name: postAuthor },
-        { $addToSet: { posts: post._id } }
-      );
-
-      return post;
-    },
-    addComment: async (parent, { postId, commentText, commentAuthor }) => {
-      return Post.findOneAndUpdate(
-        { _id: postId },
-        {
-          $addToSet: { comments: { commentText, commentAuthor } },
-        },
-        {
-          new: true,
-          runValidators: true,
+    saveBook: async (parent,args,context) => {
+        if (context.user) {
+            const updatedUser = await User.findByIdAndUpdate(
+                { _id: context.user._id},
+                { $addToSet: { savedBooks: args.input } },
+                { new: true}
+            );
+            return updatedUser;
         }
-      );
+        throw new AuthenticationError('You need to be logged ini!');
     },
-    removePost: async (parent, { postId }) => {
-      return Post.findOneAndDelete({ _id: postId });
-    },
-    removeComment: async (parent, { postId, commentId }) => {
-      return Post.findOneAndUpdate(
-        { _id: postId },
-        { $pull: { comments: { _id: commentId } } },
-        { new: true }
-      );
-    },
-  },
+
+    removeBook: async (parent,args,context) => {
+        if (context.user) {
+            const updatedUser = await User.findOneAndUpdate(
+                { _id: context.user._id},
+                { $pull: { savedBooks: { bookId: args.bookId } } },
+                { new: true}
+            );
+            return updatedUser;
+        }
+        throw new AuthenticationError('You need to be logged ini!');
+    }
+}
+
 };
 
 module.exports = resolvers;
