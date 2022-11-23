@@ -17,6 +17,7 @@ type User {
     email:String!
     password:String!
     savedBooks:[Book]
+    bookCount:Int
 }
 input savedBook {
     description: String
