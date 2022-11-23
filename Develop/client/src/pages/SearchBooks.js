@@ -53,7 +53,7 @@ const SearchBooks = () => {
       setSearchedBooks(bookData);
       setSearchInput('');
     } catch (err) {
-      console.error(err);
+      console.log(error);
     }
   };
 
@@ -71,7 +71,7 @@ const SearchBooks = () => {
     try {
       // const response = await saveBook(bookToSave, token);
       const {data} = await saveBook({
-        variables: { input: bookToSave }
+        variables: { newBook: { ...bookToSave } },
       });
 
       // if book successfully saves to user's account, save book id to state
